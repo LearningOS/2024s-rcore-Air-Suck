@@ -23,6 +23,8 @@
 extern crate log;
 
 use core::arch::global_asm;
+// use batch::KERNEL_STACK;
+// use batch::USER_STACK;
 #[path = "boards/qemu.rs"]
 mod board;
 use log::*;

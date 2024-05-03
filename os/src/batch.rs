@@ -11,7 +11,9 @@ const MAX_APP_NUM: usize = 16;
 const APP_BASE_ADDRESS: usize = 0x80400000;
 const APP_SIZE_LIMIT: usize = 0x20000;
 
+
 #[repr(align(4096))]
+///test
 struct KernelStack {
     data: [u8; KERNEL_STACK_SIZE],
 }
@@ -29,9 +31,11 @@ static USER_STACK: UserStack = UserStack {
 };
 
 impl KernelStack {
+
     fn get_sp(&self) -> usize {
         self.data.as_ptr() as usize + KERNEL_STACK_SIZE
     }
+
     pub fn push_context(&self, cx: TrapContext) -> &'static mut TrapContext {
         let cx_ptr = (self.get_sp() - core::mem::size_of::<TrapContext>()) as *mut TrapContext;
         unsafe {
