@@ -26,8 +26,14 @@ mod process;
 
 use fs::*;
 use process::*;
+use crate::task::get_current_tcb;
 /// handle syscall exception with `syscall_id` and other arguments
 pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
+    let tcb_raw_ptr = get_current_tcb();
+    unsafe {
+        (*tcb_raw_ptr).syscall_times[syscall_id] += 1;
+        
+    }
     match syscall_id {
         SYSCALL_WRITE => sys_write(args[0], args[1] as *const u8, args[2]),
         SYSCALL_EXIT => sys_exit(args[0] as i32),

@@ -17,11 +17,14 @@ mod task;
 use crate::config::MAX_APP_NUM;
 use crate::loader::{get_num_app, init_app_cx};
 use crate::sync::UPSafeCell;
+use crate::timer::get_time_us;
 use lazy_static::*;
 use switch::__switch;
 pub use task::{TaskControlBlock, TaskStatus};
 
 pub use context::TaskContext;
+use crate::config::MAX_SYSCALL_NUM;
+
 
 /// The task manager, where all the tasks are managed.
 ///
@@ -51,9 +54,12 @@ lazy_static! {
     /// Global variable: TASK_MANAGER
     pub static ref TASK_MANAGER: TaskManager = {
         let num_app = get_num_app();
-        let mut tasks = [TaskControlBlock {
+        let mut tasks = [TaskControlBlock{
             task_cx: TaskContext::zero_init(),
             task_status: TaskStatus::UnInit,
+            sche_time:None,
+            syscall_times: [0; MAX_SYSCALL_NUM],
+            syscall_time:0,
         }; MAX_APP_NUM];
         for (i, task) in tasks.iter_mut().enumerate() {
             task.task_cx = TaskContext::goto_restore(init_app_cx(i));
@@ -81,6 +87,10 @@ impl TaskManager {
         let task0 = &mut inner.tasks[0];
         task0.task_status = TaskStatus::Running;
         let next_task_cx_ptr = &task0.task_cx as *const TaskContext;
+        // 设置任务被调度的时间
+        if task0.sche_time.is_none(){
+            task0.sche_time=Some(get_time_us());
+        }
         drop(inner);
         let mut _unused = TaskContext::zero_init();
         // before this, we should drop local variables that must be dropped manually
@@ -95,6 +105,15 @@ impl TaskManager {
         let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
         inner.tasks[current].task_status = TaskStatus::Ready;
+    }
+
+    /// Get the current task control block
+    fn get_current_tcb(&self) -> *mut TaskControlBlock{
+        let mut innner = self.inner.exclusive_access();
+        let task_id =innner.current_task;
+        let raw = &mut innner.tasks[task_id] as *mut TaskControlBlock;
+        drop(innner);
+        raw
     }
 
     /// Change the status of current `Running` task into `Exited`.
@@ -125,6 +144,10 @@ impl TaskManager {
             inner.current_task = next;
             let current_task_cx_ptr = &mut inner.tasks[current].task_cx as *mut TaskContext;
             let next_task_cx_ptr = &inner.tasks[next].task_cx as *const TaskContext;
+            // 设置任务被调度的时间
+            if inner.tasks[next].sche_time.is_none(){
+                inner.tasks[next].sche_time=Some(get_time_us());
+            }
             drop(inner);
             // before this, we should drop local variables that must be dropped manually
             unsafe {
@@ -140,6 +163,11 @@ impl TaskManager {
 /// Run the first task in task list.
 pub fn run_first_task() {
     TASK_MANAGER.run_first_task();
+}
+
+/// Get the current task control block ptr
+pub fn get_current_tcb()->*mut TaskControlBlock{
+    TASK_MANAGER.get_current_tcb()
 }
 
 /// Switch current `Running` task to the task we have found,
