@@ -16,6 +16,7 @@ mod task;
 
 use crate::loader::{get_app_data, get_num_app};
 use crate::sync::UPSafeCell;
+use crate::timer::get_time_us;
 use crate::trap::TrapContext;
 use alloc::vec::Vec;
 use lazy_static::*;
@@ -79,6 +80,9 @@ impl TaskManager {
         let mut inner = self.inner.exclusive_access();
         let next_task = &mut inner.tasks[0];
         next_task.task_status = TaskStatus::Running;
+        if next_task.sche_time.is_none(){
+            next_task.sche_time = Some(get_time_us());
+        }
         let next_task_cx_ptr = &next_task.task_cx as *const TaskContext;
         drop(inner);
         let mut _unused = TaskContext::zero_init();
@@ -141,6 +145,9 @@ impl TaskManager {
             let current = inner.current_task;
             inner.tasks[next].task_status = TaskStatus::Running;
             inner.current_task = next;
+            if inner.tasks[next].sche_time.is_none(){
+                inner.tasks[next].sche_time = Some(get_time_us());
+            }
             let current_task_cx_ptr = &mut inner.tasks[current].task_cx as *mut TaskContext;
             let next_task_cx_ptr = &inner.tasks[next].task_cx as *const TaskContext;
             drop(inner);
@@ -153,11 +160,25 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
+
+    /// Get the current task control block
+    fn get_current_tcb(&self) -> *mut TaskControlBlock{
+        let mut innner = self.inner.exclusive_access();
+        let task_id =innner.current_task;
+        let raw = &mut innner.tasks[task_id] as *mut TaskControlBlock;
+        drop(innner);
+        raw
+    }
 }
 
 /// Run the first task in task list.
 pub fn run_first_task() {
     TASK_MANAGER.run_first_task();
+}
+
+/// Get the current task control block ptr
+pub fn get_current_tcb()->*mut TaskControlBlock{
+    TASK_MANAGER.get_current_tcb()
 }
 
 /// Switch current `Running` task to the task we have found,
