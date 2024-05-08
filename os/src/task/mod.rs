@@ -24,7 +24,7 @@ mod task;
 use crate::loader::get_app_data_by_name;
 use alloc::sync::Arc;
 use lazy_static::*;
-pub use manager::{fetch_task, TaskManager};
+pub use manager::{fetch_task, TaskManager,find_smallest_stride,TASK_MANAGER,get_length};
 use switch::__switch;
 pub use task::{TaskControlBlock, TaskStatus};
 
@@ -39,7 +39,14 @@ pub use processor::{
 pub fn suspend_current_and_run_next() {
     // There must be an application running.
     let task = take_current_task().unwrap();
-
+    // let length =get_length();
+    // println!("");
+    // for _ in 0..length{
+    //     if let Some(temp)=fetch_task(){
+    //         println!("wait====ready queue====pid:{}, Num is:{}",temp.getpid(),Arc::strong_count(&temp));
+    //         add_task(temp);
+    //     }
+    // }
     // ---- access current TCB exclusively
     let mut task_inner = task.inner_exclusive_access();
     let task_cx_ptr = &mut task_inner.task_cx as *mut TaskContext;
@@ -47,7 +54,6 @@ pub fn suspend_current_and_run_next() {
     task_inner.task_status = TaskStatus::Ready;
     drop(task_inner);
     // ---- release current PCB
-
     // push back to ready queue.
     add_task(task);
     // jump to scheduling cycle
@@ -61,7 +67,6 @@ pub const IDLE_PID: usize = 0;
 pub fn exit_current_and_run_next(exit_code: i32) {
     // take from Processor
     let task = take_current_task().unwrap();
-
     let pid = task.getpid();
     if pid == IDLE_PID {
         println!(
@@ -107,7 +112,7 @@ lazy_static! {
     /// the name "initproc" may be changed to any other app name like "usertests",
     /// but we have user_shell, so we don't need to change it.
     pub static ref INITPROC: Arc<TaskControlBlock> = Arc::new(TaskControlBlock::new(
-        get_app_data_by_name("ch5b_initproc").unwrap()
+        get_app_data_by_name("ch5_usertest").unwrap()
     ));
 }
 

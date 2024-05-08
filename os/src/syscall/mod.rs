@@ -45,8 +45,18 @@ mod process;
 
 use fs::*;
 use process::*;
+use crate::task::{current_task, TaskControlBlock};
+use alloc::sync::Arc;
+#[no_mangle]
 /// handle syscall exception with `syscall_id` and other arguments
 pub fn syscall(syscall_id: usize, args: [usize; 3]) -> isize {
+    // get current task
+    let tcb_raw_ptr:Arc::<TaskControlBlock> =current_task().unwrap();
+    let mut inner= (*tcb_raw_ptr).inner_exclusive_access();
+    inner.syscall_times[syscall_id] += 1;
+    drop(inner);
+    // 这里一定要释放！不然这个计数就会一直持续到wait系统调用中导致虽然进程是结束了，但是计数还是不为0
+    drop(tcb_raw_ptr);
     match syscall_id {
         SYSCALL_READ => sys_read(args[0], args[1] as *const u8, args[2]),
         SYSCALL_WRITE => sys_write(args[0], args[1] as *const u8, args[2]),
