@@ -1,14 +1,14 @@
 use crate::{
     config::MAX_SYSCALL_NUM,
     fs::{open_file, OpenFlags},
-    mm::{translated_ref, translated_refmut, translated_str},
+    mm::{translated_ref, translated_refmut, translated_str,translated_byte_buffer},
     task::{
         current_process, current_task, current_user_token, exit_current_and_run_next, pid2process,
         suspend_current_and_run_next, SignalFlags, TaskStatus,
     },
 };
 use alloc::{string::String, sync::Arc, vec::Vec};
-
+use crate::timer::get_time_us;
 #[repr(C)]
 #[derive(Debug)]
 pub struct TimeVal {
@@ -159,22 +159,35 @@ pub fn sys_kill(pid: usize, signal: u32) -> isize {
 
 /// get_time syscall
 ///
-/// YOUR JOB: get time with second and microsecond
-/// HINT: You might reimplement it with virtual memory management.
-/// HINT: What if [`TimeVal`] is splitted by two pages ?
 pub fn sys_get_time(_ts: *mut TimeVal, _tz: usize) -> isize {
-    trace!(
-        "kernel:pid[{}] sys_get_time NOT IMPLEMENTED",
-        current_task().unwrap().process.upgrade().unwrap().getpid()
-    );
-    -1
+    // _ts is a virtual address
+    trace!("kernel: sys_get_time");
+    let us = get_time_us();     //get the time in us
+    let mut time=TimeVal{
+        sec: us / 1_000_000,
+        usec: us % 1_000_000,
+    };
+    let time_raw_ptr=&mut time as *const TimeVal as *const u8;
+    let time_slice: &[u8];
+    unsafe{
+        time_slice =core::slice::from_raw_parts(time_raw_ptr,core::mem::size_of::<TimeVal>());
+    }
+    //get the translated byte buffer
+    let buffers = translated_byte_buffer(current_user_token(),_ts as *const u8,core::mem::size_of::<TimeVal>());  
+    let mut start=0;
+    // write the time to the buffer(phiysical memory)
+    for buffer in buffers {
+        if start+buffer.len()>=time_slice.len(){
+            buffer.copy_from_slice(&time_slice[start..]);
+        }else{
+            buffer.copy_from_slice(&time_slice[start..start+buffer.len()]);
+        }
+        start+=buffer.len();
+    }
+    0
 }
 
 /// task_info syscall
-///
-/// YOUR JOB: Finish sys_task_info to pass testcases
-/// HINT: You might reimplement it with virtual memory management.
-/// HINT: What if [`TaskInfo`] is splitted by two pages ?
 pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
     trace!(
         "kernel:pid[{}] sys_task_info NOT IMPLEMENTED",
@@ -184,8 +197,6 @@ pub fn sys_task_info(_ti: *mut TaskInfo) -> isize {
 }
 
 /// mmap syscall
-///
-/// YOUR JOB: Implement mmap.
 pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     trace!(
         "kernel:pid[{}] sys_mmap NOT IMPLEMENTED",
@@ -195,8 +206,6 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
 }
 
 /// munmap syscall
-///
-/// YOUR JOB: Implement munmap.
 pub fn sys_munmap(_start: usize, _len: usize) -> isize {
     trace!(
         "kernel:pid[{}] sys_munmap NOT IMPLEMENTED",
@@ -215,8 +224,6 @@ pub fn sys_munmap(_start: usize, _len: usize) -> isize {
 // }
 
 /// spawn syscall
-/// YOUR JOB: Implement spawn.
-/// HINT: fork + exec =/= spawn
 pub fn sys_spawn(_path: *const u8) -> isize {
     trace!(
         "kernel:pid[{}] sys_spawn NOT IMPLEMENTED",
@@ -226,8 +233,6 @@ pub fn sys_spawn(_path: *const u8) -> isize {
 }
 
 /// set priority syscall
-///
-/// YOUR JOB: Set task priority
 pub fn sys_set_priority(_prio: isize) -> isize {
     trace!(
         "kernel:pid[{}] sys_set_priority NOT IMPLEMENTED",

@@ -6,7 +6,7 @@ use crate::trap::TrapContext;
 use crate::{mm::PhysPageNum, sync::UPSafeCell};
 use alloc::sync::{Arc, Weak};
 use core::cell::RefMut;
-
+// use crate::task::current_task;
 /// Task control block structure
 pub struct TaskControlBlock {
     /// immutable
@@ -27,6 +27,21 @@ impl TaskControlBlock {
         let process = self.process.upgrade().unwrap();
         let inner = process.inner_exclusive_access();
         inner.memory_set.token()
+    }
+    /// Get the tid
+    pub fn get_tid(&self) -> usize {
+        // current_task().unwrap().inner_exclusive_access().res.as_ref().unwrap().tid
+        // self.inner_exclusive_access().res.as_ref().unwrap().tid
+        let inner = self.inner_exclusive_access();
+        let res=inner.res.as_ref();
+        match res {
+            None=>{
+                return 999;
+            }
+            Some(_)=>{
+                return res.unwrap().tid;
+            }
+        }
     }
 }
 

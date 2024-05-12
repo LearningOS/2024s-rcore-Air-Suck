@@ -123,7 +123,6 @@ pub fn sys_dup(fd: usize) -> isize {
     new_fd as isize
 }
 
-/// YOUR JOB: Implement fstat.
 pub fn sys_fstat(_fd: usize, _st: *mut Stat) -> isize {
     trace!(
         "kernel:pid[{}] sys_fstat NOT IMPLEMENTED",
@@ -132,7 +131,6 @@ pub fn sys_fstat(_fd: usize, _st: *mut Stat) -> isize {
     -1
 }
 
-/// YOUR JOB: Implement linkat.
 pub fn sys_linkat(_old_name: *const u8, _new_name: *const u8) -> isize {
     trace!(
         "kernel:pid[{}] sys_linkat NOT IMPLEMENTED",
@@ -141,7 +139,6 @@ pub fn sys_linkat(_old_name: *const u8, _new_name: *const u8) -> isize {
     -1
 }
 
-/// YOUR JOB: Implement unlinkat.
 pub fn sys_unlinkat(_name: *const u8) -> isize {
     trace!(
         "kernel:pid[{}] sys_unlinkat NOT IMPLEMENTED",
