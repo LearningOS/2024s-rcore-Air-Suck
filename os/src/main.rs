@@ -100,7 +100,7 @@ pub fn rust_main() -> ! {
     clear_bss();
     kernel_log_info();
     mm::init();
-    println!("[kernel] back to world!");
+    println!("[kernel] back to world! I am Here");
     mm::remap_test();
     trap::init();
     trap::enable_timer_interrupt();
